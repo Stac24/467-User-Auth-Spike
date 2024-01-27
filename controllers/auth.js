@@ -10,6 +10,54 @@ const db = mysql.createConnection({
     port: process.env.PORT
 });
 
+exports.login = async (req, res) => {
+    try{
+        const {email, password } = req.body;
+        if( !email || !password ) {
+            return res.status(400).render("login", {
+                message: 'Please enter your email and password'
+            });
+        }
+
+        db.query('SELECT * FROM users WHERE email = ?', [email], async (error, results) => {
+        
+            if(!results[0]) {
+                res.status(401).render('login', {
+                    message: 'Email or Password in Incorrect'
+                })
+            }
+            else if( !(await bcrypt.compare(password, results[0].password)) ) {
+                res.status(401).render('login', {
+                    message: 'Email or Password in Incorrect'
+                })
+            }
+            else {
+                const id = results[0].id;
+                const token = jwt.sign({ id: id}, process.env.JWT_SECRET, {
+                    expiresIn: process.env.JWT_EXPIRES
+                });
+                console.log("The token is: " + token);
+
+                const cookieOptions = {
+                    expiresIn: new Date (
+                        Date.now() + process.env.COOKIE_EXPIRES * 24 * 60 * 60 * 1000
+                    ),
+                    httpOnly: true
+                }
+
+                // Put cookie in browser after successful login
+                res.cookie('cookie', token, cookieOptions);
+                res.status(200).redirect("/");
+            }
+        })
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+
+// Register User
 exports.register = (req, res) => {
     const {email, password, passwordConfirm } = req.body;
     
