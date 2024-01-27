@@ -1,6 +1,7 @@
 const mysql = require("mysql");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const util = require('util');
 
 const db = mysql.createConnection({
     host: process.env.HOST,
@@ -10,6 +11,7 @@ const db = mysql.createConnection({
     port: process.env.PORT
 });
 
+// Login User
 exports.login = async (req, res) => {
     try{
         const {email, password } = req.body;
@@ -46,7 +48,7 @@ exports.login = async (req, res) => {
                 }
 
                 // Put cookie in browser after successful login
-                res.cookie('cookie', token, cookieOptions);
+                res.cookie('jwt', token, cookieOptions);
                 res.status(200).redirect("/");
             }
         })
@@ -89,4 +91,33 @@ exports.register = (req, res) => {
 
     });
 
+}
+
+exports.isLoggedIn = async (req, res, next) => {
+    if( req.cookies.jwt ) {
+        try{
+            // Verify the token (tells us if the token exists, and which user it correlates to)
+            const decoded = await util.promisify(jwt.verify)(req.cookies.jwt, process.env.JWT_SECRET);
+            console.log(decoded);
+
+            // Check if the user still exists
+            db.query('SELECT * FROM users WHERE id = ?', [decoded.id], (error, result) => {
+                console.log(result[0]);
+
+                if(!result[0]){
+                    return next();
+                }
+
+                req.user = result[0];
+                return next();
+            });
+
+        } catch(error){
+            console.log(error);
+            return next();
+        }
+    }
+    else {
+        next();
+    }
 }

@@ -27,3 +27,13 @@ nav li a:hover {
     color: plum;
     text-decoration: none;
 }
+
+.avatar-ctn {
+    background-color: lightsalmon;
+    text-align: center;
+}
+
+.avatar {
+    width: 65%;
+    border-bottom: 1px solid rgba(0,0,0,0.125);
+}
