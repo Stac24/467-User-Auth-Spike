@@ -2,6 +2,7 @@ const mysql = require("mysql");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const util = require('util');
+const { decode } = require("punycode");
 
 const db = mysql.createConnection({
     host: process.env.HOST,
@@ -93,16 +94,18 @@ exports.register = (req, res) => {
 
 }
 
+// Middleware funciton to check if a user is logged in
 exports.isLoggedIn = async (req, res, next) => {
     if( req.cookies.jwt ) {
         try{
             // Verify the token (tells us if the token exists, and which user it correlates to)
             const decoded = await util.promisify(jwt.verify)(req.cookies.jwt, process.env.JWT_SECRET);
+            console.log("DECODED :");
             console.log(decoded);
 
             // Check if the user still exists
             db.query('SELECT * FROM users WHERE id = ?', [decoded.id], (error, result) => {
-                console.log(result[0]);
+                //console.log(result[0]);
 
                 if(!result[0]){
                     return next();
@@ -120,4 +123,14 @@ exports.isLoggedIn = async (req, res, next) => {
     else {
         next();
     }
+}
+
+exports.logout = async (req, res) => {
+    //Override current cookie
+    res.cookie('jwt', jwt.sign({id: 'logout'}, process.env.JWT_SECRET, {}), {
+        expiresIn: new Date(Date.now() + 2 * 1000), //Expires 2 seconds after user clicks logout
+        httpOnly: true
+    });
+
+    res.status(200).redirect('/');
 }
